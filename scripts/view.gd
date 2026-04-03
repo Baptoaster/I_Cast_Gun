@@ -122,15 +122,23 @@ func handle_input(delta):
 func sync_rotation_from_current_view():
 	var forward = -global_transform.basis.z.normalized()
 
-	# Yaw toujours fiable
-	camera_rotation.y = rad_to_deg(atan2(forward.x, forward.z))
+	# Normalise le yaw vers l'angle équivalent le plus proche de rotation_degrees.y
+	# pour que le lerp orbite emprunte toujours le chemin le plus court
+	var raw_yaw = rad_to_deg(atan2(forward.x, forward.z))
+	camera_rotation.y = normalize_angle_near(raw_yaw, rotation_degrees.y)
 
 	# Pitch seulement en visée
 	if is_aiming:
-		camera_rotation.x = rad_to_deg(asin(forward.y))
+		camera_rotation.x = rad_to_deg(asin(clamp(forward.y, -1.0, 1.0)))
 	else:
 		# garder ton comportement orbite d'origine
 		camera_rotation.x = rotation_degrees.x
+
+
+# Retourne l'angle équivalent à 'angle' qui est à ±180° de 'reference'
+# afin de garantir le chemin le plus court lors d'un lerp d'angles Euler
+func normalize_angle_near(angle: float, reference: float) -> float:
+	return angle + round((reference - angle) / 360.0) * 360.0
 
 
 # ===== ALIGN CHARACTER (FIX MAJEUR) =====
