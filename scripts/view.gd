@@ -15,20 +15,17 @@ extends Node3D
 @export_group("TPS Mode")
 @export var tps_distance = 3.0  # Distance de la caméra derrière le joueur
 @export var tps_height = 0.6  # Hauteur de la caméra par rapport au personnage
+@export var character_rotation_speed = 8.0  # Vitesse de rotation du personnage
 
-var camera_rotation:Vector3
+var camera_rotation: Vector3
 var zoom = 10
-var is_aiming = false  # Mode TPS activé
-var orbit_zoom = 10  # Sauvegarde du zoom en mode orbite
-var orbit_rotation = Vector3.ZERO  # Sauvegarde de la rotation en mode orbite
-var tps_rotation = Vector3.ZERO  # Sauvegarde de la rotation en mode TPS
+var is_aiming = false
+var orbit_zoom = 10
 
 @onready var camera = $Camera
 
 func _ready():
-	camera_rotation = rotation_degrees # Initial rotation
-	orbit_rotation = rotation_degrees  # Initialiser la rotation d'orbite
-	tps_rotation = rotation_degrees    # Initialiser la rotation TPS
+	camera_rotation = rotation_degrees
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	pass
 
@@ -38,35 +35,16 @@ func _physics_process(delta):
 	if Input.is_action_just_pressed("aim"):
 		is_aiming = true
 		orbit_zoom = zoom
-		orbit_rotation = camera_rotation  # Sauvegarder la rotation d'orbite actuelle
-		
-		# Initialiser la rotation TPS basée sur la direction de la caméra d'orbite
-		tps_rotation.y = orbit_rotation.y
-		tps_rotation.x = clamp(orbit_rotation.x, -85, 45)
-		camera_rotation = tps_rotation
-		
 	elif Input.is_action_just_released("aim"):
 		is_aiming = false
-		tps_rotation = camera_rotation  # Sauvegarder la rotation TPS actuelle
-		
-		# Initialiser la rotation d'orbite basée sur la direction de la caméra TPS
-		orbit_rotation.y = tps_rotation.y
-		orbit_rotation.x = clamp(tps_rotation.x, -80, -10)
-		camera_rotation = orbit_rotation
 	
 	if is_aiming:
 		# Mode TPS : la caméra orbite autour du joueur
 		
-		# Forcer le joueur à regarder dans la direction de la caméra (inverser l'axe Y)
-		var target_rotation = target.rotation_degrees
-		target_rotation.y = camera_rotation.y + 180  # +180 pour voir le dos
-		target.rotation_degrees = target_rotation
-		
 		# Calculer la position de la caméra en orbite autour du joueur
-		# Basée sur les angles de la caméra
 		var orbit_radius = tps_distance
 		
-		# Convertir les angles en position orbitale
+		# Convertir les angles de camera_rotation en position orbitale
 		var horizontal_angle = camera_rotation.y * PI / 180.0
 		var vertical_angle = camera_rotation.x * PI / 180.0
 		
@@ -76,12 +54,28 @@ func _physics_process(delta):
 			-cos(horizontal_angle) * cos(vertical_angle) * orbit_radius
 		)
 		
-		# Positionner la caméra directement sans lerp pour centrer le joueur
+		# Positionner la caméra directement
 		self.global_position = target.position + camera_offset
 		
-		# Appliquer la rotation de la caméra
-		rotation_degrees = camera_rotation
+		# Faire pointer la caméra vers le joueur
+		self.look_at(target.position + Vector3(0, tps_height * 0.5, 0), Vector3.UP)
 		camera.position = Vector3.ZERO
+		
+		# Rotation du personnage : il doit faire dos à la caméra
+		# La direction derrière la caméra
+		var camera_forward = -self.global_transform.basis.z
+		var aim_direction = Vector3(camera_forward.x, 0, camera_forward.z).normalized()
+		
+		# Calculer l'angle cible pour le personnage (direction inverse de caméra)
+		var target_angle_y = atan2(aim_direction.x, aim_direction.z) * 180.0 / PI
+		
+		# Interpoler la rotation du personnage
+		var current_rotation = target.rotation_degrees.y
+		var new_rotation_y = lerpf(current_rotation, target_angle_y, min(character_rotation_speed * delta, 1.0))
+		
+		var target_rotation = target.rotation_degrees
+		target_rotation.y = new_rotation_y
+		target.rotation_degrees = target_rotation
 		
 	else:
 		# Mode orbite : comportement normal
@@ -100,17 +94,16 @@ func handle_input(delta):
 	input.x = Input.get_axis("camera_up", "camera_down")
 	
 	if is_aiming:
-		# Mode TPS : rotation de la caméra
+		# Mode TPS : rotation de la caméra basée sur camera_rotation
 		camera_rotation += input.limit_length(1.0) * rotation_speed * delta
 		
 		# Mouvement de souris en mode TPS
 		var mouse_motion = Input.get_last_mouse_velocity()
-		camera_rotation.y -= mouse_motion.x * mouse_sensitivity * delta
+		camera_rotation.y -= -mouse_motion.x * mouse_sensitivity * delta
 		camera_rotation.x -= mouse_motion.y * mouse_sensitivity * delta
 		
 		# Clamp rotation
 		camera_rotation.x = clamp(camera_rotation.x, -85, 45)
-		tps_rotation = camera_rotation  # Mettre à jour la sauvegarde TPS
 	else:
 		# Mode orbite : comportement original
 		camera_rotation += input.limit_length(1.0) * rotation_speed * delta
@@ -122,7 +115,6 @@ func handle_input(delta):
 		
 		# Clamp rotation
 		camera_rotation.x = clamp(camera_rotation.x, -80, -10)
-		orbit_rotation = camera_rotation  # Mettre à jour la sauvegarde d'orbite
 		
 		# Zooming (seulement en mode orbite)
 		zoom += Input.get_axis("zoom_in", "zoom_out") * zoom_speed * delta
