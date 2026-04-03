@@ -13,14 +13,12 @@ extends Node3D
 @export var mouse_sensitivity = 0.1
 
 @export_group("TPS Mode")
-@export var tps_distance = 3.0  # Distance de la caméra en mode TPS
+@export var tps_distance = 3.0  # Distance de la caméra derrière le joueur
 @export var tps_height = 0.6  # Hauteur de la caméra par rapport au personnage
-@export var tps_lerp_speed = 8.0  # Vitesse de transition vers le mode TPS
 
 var camera_rotation:Vector3
 var zoom = 10
 var is_aiming = false  # Mode TPS activé
-var tps_target_position = Vector3.ZERO
 var orbit_zoom = 10  # Sauvegarde du zoom en mode orbite
 
 @onready var camera = $Camera
@@ -40,30 +38,34 @@ func _physics_process(delta):
 		is_aiming = false
 	
 	if is_aiming:
-		# Mode TPS : la caméra suit le personnage en se plaçant derrière lui
-		# La caméra est toujours à une distance fixe devant le regard du personnage
+		# Mode TPS : la caméra orbite autour du joueur
 		
-		# Calculer la direction dans laquelle regarde la caméra
-		var camera_direction = Vector3(
-			sin(camera_rotation.y * PI / 180.0),
-			0,
-			-cos(camera_rotation.y * PI / 180.0)
-		)
-		
-		# Positionner la caméra devant le personnage, dans la direction du regard
-		var camera_pos = target.position - camera_direction * tps_distance
-		camera_pos.y += tps_height
-		
-		self.global_position = self.global_position.lerp(camera_pos, delta * tps_lerp_speed)
-		camera.position = Vector3.ZERO
-		
-		# Forcer le personnage à regarder dans la même direction que la caméra
+		# Forcer le joueur à regarder dans la direction de la caméra (inverser l'axe Y)
 		var target_rotation = target.rotation_degrees
-		target_rotation.y = camera_rotation.y
+		target_rotation.y = camera_rotation.y + 180  # +180 pour voir le dos
 		target.rotation_degrees = target_rotation
 		
-		# Appliquer la rotation de la caméra (inclinaison haut/bas)
+		# Calculer la position de la caméra en orbite autour du joueur
+		# Basée sur les angles de la caméra
+		var orbit_radius = tps_distance
+		
+		# Convertir les angles en position orbitale
+		var horizontal_angle = camera_rotation.y * PI / 180.0
+		var vertical_angle = camera_rotation.x * PI / 180.0
+		
+		var camera_offset = Vector3(
+			sin(horizontal_angle) * cos(vertical_angle) * orbit_radius,
+			sin(vertical_angle) * orbit_radius + tps_height,
+			-cos(horizontal_angle) * cos(vertical_angle) * orbit_radius
+		)
+		
+		# Positionner la caméra directement sans lerp pour centrer le joueur
+		self.global_position = target.position + camera_offset
+		
+		# Appliquer la rotation de la caméra
 		rotation_degrees = camera_rotation
+		camera.position = Vector3.ZERO
+		
 	else:
 		# Mode orbite : comportement normal
 		self.position = self.position.lerp(target.position, delta * 4)
@@ -81,7 +83,7 @@ func handle_input(delta):
 	input.x = Input.get_axis("camera_up", "camera_down")
 	
 	if is_aiming:
-		# Mode TPS : la caméra suit le regard du personnage
+		# Mode TPS : rotation de la caméra
 		camera_rotation += input.limit_length(1.0) * rotation_speed * delta
 		
 		# Mouvement de souris en mode TPS
