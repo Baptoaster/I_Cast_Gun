@@ -12,7 +12,7 @@ extends Node3D
 @export var rotation_speed = 120
 @export var mouse_sensitivity = 0.1
 
-@export_group("TPS Mode")
+@export_group("AIM Mode")
 @export var tps_distance = 3.0
 @export var tps_height = 0.6
 @export var character_rotation_speed = 8.0
@@ -36,16 +36,12 @@ func _physics_process(delta):
 	if Input.is_action_just_pressed("aim"):
 		is_aiming = true
 		orbit_zoom = zoom
-		
-		sync_rotation_from_current_view()
-		align_character_to_camera() # FIX PRINCIPAL
+		align_character_to_camera(delta)
 
 	elif Input.is_action_just_released("aim"):
 		is_aiming = false
-		
-		sync_rotation_from_current_view()
 
-	# ===== TPS MODE =====
+	# ===== AIM MODE =====
 	if is_aiming:
 		
 		var orbit_radius = tps_distance
@@ -80,7 +76,7 @@ func _physics_process(delta):
 			
 			target.rotation_degrees.y = rad_to_deg(new_angle)
 
-	# ===== ORBIT MODE (INTOUCHÉ) =====
+	# ===== ORBIT MODE =====
 	else:
 		self.position = self.position.lerp(target.position, delta * 4)
 		rotation_degrees = rotation_degrees.lerp(camera_rotation, delta * 6)
@@ -118,31 +114,12 @@ func handle_input(delta):
 		zoom = clamp(zoom, zoom_maximum, zoom_minimum)
 
 
-# ===== SYNC CAM =====
-func sync_rotation_from_current_view():
-	var forward = -global_transform.basis.z.normalized()
-
-	# Normalise le yaw vers l'angle équivalent le plus proche de rotation_degrees.y
-	# pour que le lerp orbite emprunte toujours le chemin le plus court
-	var raw_yaw = rad_to_deg(atan2(forward.x, forward.z))
-	camera_rotation.y = normalize_angle_near(raw_yaw, rotation_degrees.y)
-
-	# Pitch seulement en visée
-	if is_aiming:
-		camera_rotation.x = rad_to_deg(asin(clamp(forward.y, -1.0, 1.0)))
-	else:
-		# garder ton comportement orbite d'origine
-		camera_rotation.x = rotation_degrees.x
-
-
-# Retourne l'angle équivalent à 'angle' qui est à ±180° de 'reference'
-# afin de garantir le chemin le plus court lors d'un lerp d'angles Euler
-func normalize_angle_near(angle: float, reference: float) -> float:
-	return angle + round((reference - angle) / 360.0) * 360.0
-
-
 # ===== ALIGN CHARACTER (FIX MAJEUR) =====
-func align_character_to_camera():
+func align_character_to_camera(delta):
+	self.position = self.position.lerp(target.position, delta * 4)
+	rotation_degrees = rotation_degrees.lerp(camera_rotation, delta * 6)
+	camera.position = camera.position.lerp(Vector3(0, 0, zoom), 8 * delta)
+	
 	var forward = -global_transform.basis.z
 	var flat_forward = Vector3(forward.x, 0, forward.z).normalized()
 	
