@@ -13,9 +13,9 @@ extends Node3D
 @export var mouse_sensitivity = 0.1
 
 @export_group("TPS Mode")
-@export var tps_distance = 3.0  # Distance de la caméra derrière le joueur
-@export var tps_height = 0.6  # Hauteur de la caméra par rapport au personnage
-@export var character_rotation_speed = 8.0  # Vitesse de rotation du personnage
+@export var tps_distance = 3.0
+@export var tps_height = 0.6
+@export var character_rotation_speed = 8.0
 
 var camera_rotation: Vector3
 var zoom = 10
@@ -24,29 +24,34 @@ var orbit_zoom = 10
 
 @onready var camera = $Camera
 
+
 func _ready():
 	camera_rotation = rotation_degrees
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	pass
+
 
 func _physics_process(delta):
-	
-	# Gérer l'activation/désactivation du mode TPS
+
+	# ===== TOGGLE AIM =====
 	if Input.is_action_just_pressed("aim"):
 		is_aiming = true
 		orbit_zoom = zoom
+		
+		sync_rotation_from_current_view()
+		align_character_to_camera() # FIX PRINCIPAL
+
 	elif Input.is_action_just_released("aim"):
 		is_aiming = false
-	
-	if is_aiming:
-		# Mode TPS : la caméra orbite autour du joueur
 		
-		# Calculer la position de la caméra en orbite autour du joueur
+		sync_rotation_from_current_view()
+
+	# ===== TPS MODE =====
+	if is_aiming:
+		
 		var orbit_radius = tps_distance
 		
-		# Convertir les angles de camera_rotation en position orbitale
-		var horizontal_angle = camera_rotation.y * PI / 180.0
-		var vertical_angle = camera_rotation.x * PI / 180.0
+		var horizontal_angle = deg_to_rad(camera_rotation.y)
+		var vertical_angle = deg_to_rad(camera_rotation.x)
 		
 		var camera_offset = Vector3(
 			sin(horizontal_angle) * cos(vertical_angle) * orbit_radius,
@@ -54,68 +59,85 @@ func _physics_process(delta):
 			-cos(horizontal_angle) * cos(vertical_angle) * orbit_radius
 		)
 		
-		# Positionner la caméra directement
-		self.global_position = target.position + camera_offset
+		global_position = target.global_position + camera_offset
 		
-		# Faire pointer la caméra vers le joueur
-		self.look_at(target.position + Vector3(0, tps_height * 0.5, 0), Vector3.UP)
+		look_at(target.global_position + Vector3(0, tps_height * 0.5, 0), Vector3.UP)
 		camera.position = Vector3.ZERO
 		
-		# Rotation du personnage : il doit faire dos à la caméra
-		# La direction derrière la caméra
-		var camera_forward = -self.global_transform.basis.z
-		var aim_direction = Vector3(camera_forward.x, 0, camera_forward.z).normalized()
+		# Rotation fluide du personnage
+		var forward = -global_transform.basis.z
+		var flat_forward = Vector3(forward.x, 0, forward.z).normalized()
 		
-		# Calculer l'angle cible pour le personnage (direction inverse de caméra)
-		var target_angle_y = atan2(aim_direction.x, aim_direction.z) * 180.0 / PI
-		
-		# Interpoler la rotation du personnage
-		var current_rotation = target.rotation_degrees.y
-		var new_rotation_y = lerpf(current_rotation, target_angle_y, min(character_rotation_speed * delta, 1.0))
-		
-		var target_rotation = target.rotation_degrees
-		target_rotation.y = new_rotation_y
-		target.rotation_degrees = target_rotation
-		
+		if flat_forward.length() > 0.001:
+			var target_angle = atan2(flat_forward.x, flat_forward.z)
+			var current_angle = deg_to_rad(target.rotation_degrees.y)
+			
+			var new_angle = lerp_angle(
+				current_angle,
+				target_angle,
+				min(character_rotation_speed * delta, 1.0)
+			)
+			
+			target.rotation_degrees.y = rad_to_deg(new_angle)
+
+	# ===== ORBIT MODE (INTOUCHÉ) =====
 	else:
-		# Mode orbite : comportement normal
 		self.position = self.position.lerp(target.position, delta * 4)
 		rotation_degrees = rotation_degrees.lerp(camera_rotation, delta * 6)
 		camera.position = camera.position.lerp(Vector3(0, 0, zoom), 8 * delta)
-	
+
 	handle_input(delta)
 
-# Handle input
+
+# ===== INPUT =====
 func handle_input(delta):
-	
+
 	var input := Vector3.ZERO
 	
 	input.y = Input.get_axis("camera_left", "camera_right")
 	input.x = Input.get_axis("camera_up", "camera_down")
 	
 	if is_aiming:
-		# Mode TPS : rotation de la caméra basée sur camera_rotation
 		camera_rotation += input.limit_length(1.0) * rotation_speed * delta
 		
-		# Mouvement de souris en mode TPS
 		var mouse_motion = Input.get_last_mouse_velocity()
 		camera_rotation.y -= -mouse_motion.x * mouse_sensitivity * delta
 		camera_rotation.x -= mouse_motion.y * mouse_sensitivity * delta
 		
-		# Clamp rotation
 		camera_rotation.x = clamp(camera_rotation.x, -85, 45)
 	else:
-		# Mode orbite : comportement original
 		camera_rotation += input.limit_length(1.0) * rotation_speed * delta
 		
-		# Mouvement de souris en mode orbite
 		var mouse_motion = Input.get_last_mouse_velocity()
 		camera_rotation.y -= mouse_motion.x * mouse_sensitivity * delta
 		camera_rotation.x -= mouse_motion.y * mouse_sensitivity * delta
 		
-		# Clamp rotation
 		camera_rotation.x = clamp(camera_rotation.x, -80, -10)
 		
-		# Zooming (seulement en mode orbite)
 		zoom += Input.get_axis("zoom_in", "zoom_out") * zoom_speed * delta
 		zoom = clamp(zoom, zoom_maximum, zoom_minimum)
+
+
+# ===== SYNC CAM =====
+func sync_rotation_from_current_view():
+	var forward = -global_transform.basis.z.normalized()
+
+	# Yaw toujours fiable
+	camera_rotation.y = rad_to_deg(atan2(forward.x, forward.z))
+
+	# Pitch seulement en visée
+	if is_aiming:
+		camera_rotation.x = rad_to_deg(asin(forward.y))
+	else:
+		# garder ton comportement orbite d'origine
+		camera_rotation.x = rotation_degrees.x
+
+
+# ===== ALIGN CHARACTER (FIX MAJEUR) =====
+func align_character_to_camera():
+	var forward = -global_transform.basis.z
+	var flat_forward = Vector3(forward.x, 0, forward.z).normalized()
+	
+	if flat_forward.length() > 0.001:
+		var angle = atan2(flat_forward.x, flat_forward.z)
+		target.rotation_degrees.y = rad_to_deg(angle)
