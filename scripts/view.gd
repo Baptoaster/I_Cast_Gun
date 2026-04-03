@@ -20,11 +20,15 @@ var camera_rotation:Vector3
 var zoom = 10
 var is_aiming = false  # Mode TPS activé
 var orbit_zoom = 10  # Sauvegarde du zoom en mode orbite
+var orbit_rotation = Vector3.ZERO  # Sauvegarde de la rotation en mode orbite
+var tps_rotation = Vector3.ZERO  # Sauvegarde de la rotation en mode TPS
 
 @onready var camera = $Camera
 
 func _ready():
 	camera_rotation = rotation_degrees # Initial rotation
+	orbit_rotation = rotation_degrees  # Initialiser la rotation d'orbite
+	tps_rotation = rotation_degrees    # Initialiser la rotation TPS
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	pass
 
@@ -34,8 +38,21 @@ func _physics_process(delta):
 	if Input.is_action_just_pressed("aim"):
 		is_aiming = true
 		orbit_zoom = zoom
+		orbit_rotation = camera_rotation  # Sauvegarder la rotation d'orbite actuelle
+		
+		# Initialiser la rotation TPS basée sur la direction de la caméra d'orbite
+		tps_rotation.y = orbit_rotation.y
+		tps_rotation.x = clamp(orbit_rotation.x, -85, 45)
+		camera_rotation = tps_rotation
+		
 	elif Input.is_action_just_released("aim"):
 		is_aiming = false
+		tps_rotation = camera_rotation  # Sauvegarder la rotation TPS actuelle
+		
+		# Initialiser la rotation d'orbite basée sur la direction de la caméra TPS
+		orbit_rotation.y = tps_rotation.y
+		orbit_rotation.x = clamp(tps_rotation.x, -80, -10)
+		camera_rotation = orbit_rotation
 	
 	if is_aiming:
 		# Mode TPS : la caméra orbite autour du joueur
@@ -93,6 +110,7 @@ func handle_input(delta):
 		
 		# Clamp rotation
 		camera_rotation.x = clamp(camera_rotation.x, -85, 45)
+		tps_rotation = camera_rotation  # Mettre à jour la sauvegarde TPS
 	else:
 		# Mode orbite : comportement original
 		camera_rotation += input.limit_length(1.0) * rotation_speed * delta
@@ -104,6 +122,7 @@ func handle_input(delta):
 		
 		# Clamp rotation
 		camera_rotation.x = clamp(camera_rotation.x, -80, -10)
+		orbit_rotation = camera_rotation  # Mettre à jour la sauvegarde d'orbite
 		
 		# Zooming (seulement en mode orbite)
 		zoom += Input.get_axis("zoom_in", "zoom_out") * zoom_speed * delta
