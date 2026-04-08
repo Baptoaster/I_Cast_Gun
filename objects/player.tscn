@@ -69,6 +69,6 @@ pitch_scale = 1.25
 autoplay = true
 
 [node name="Weapon" parent="." unique_id=1238854687 instance=ExtResource("6_3rerk")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -0.49281538, 0.3952968, 0.07260251)
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -0.49281538, 0.3952968, 0.07260251)
 
 [editable path="Character"]

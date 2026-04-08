@@ -1,16 +1,16 @@
 [gd_scene format=3 uid="uid://bodq3t5qimlla"]
 
 [ext_resource type="Script" uid="uid://drmne4gyu4otn" path="res://objects/weapon.gd" id="1_laojl"]
-[ext_resource type="ArrayMesh" uid="uid://bkyb0o2ipxxya" path="res://meshes/brick.res" id="1_s8wfe"]
 [ext_resource type="PackedScene" uid="uid://023uhvned0c8" path="res://objects/Bullet.tscn" id="2_r0ix3"]
+[ext_resource type="PackedScene" uid="uid://dwt4avbjdpws4" path="res://models/Pistol.glb" id="4_2nl4j"]
 
 [node name="Weapon" type="Node3D" unique_id=1238854687]
 script = ExtResource("1_laojl")
 bullet_scene = ExtResource("2_r0ix3")
-muzzle_path = NodePath("Marker3D")
+muzzle_path = NodePath("Muzzle")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=133018331]
-mesh = ExtResource("1_s8wfe")
+[node name="Muzzle" type="Marker3D" parent="." unique_id=1022727174]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.07541585, 0.24584264, -0.66644555)
 
-[node name="Marker3D" type="Marker3D" parent="." unique_id=1022727174]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.31614047)
+[node name="Mesh" parent="." unique_id=1584079376 instance=ExtResource("4_2nl4j")]
+transform = Transform3D(-1.9670125e-08, 0, 0.45, 0, 0.45, 0, -0.45, 0, -1.9670125e-08, -0.073512554, 0, 0)

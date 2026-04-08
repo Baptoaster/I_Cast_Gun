@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://jtvs5g4tweq2"]
+
+[ext_resource type="ArrayMesh" uid="uid://bkyb0o2ipxxya" path="res://meshes/brick.res" id="1_4r6ur"]
+[ext_resource type="Script" uid="uid://tmejns4i2dmv" path="res://objects/enemy.gd" id="1_wev8k"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_ylf7w"]
+radius = 3.0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wev8k"]
+height = 1.5239258
+
+[node name="Enemy" type="CharacterBody3D" unique_id=1875500307]
+script = ExtResource("1_wev8k")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=415305658]
+
+[node name="DetectionArea" type="Area3D" parent="." unique_id=353909915]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea" unique_id=954476185]
+shape = SubResource("SphereShape3D_ylf7w")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=594551135]
+transform = Transform3D(1.5948629, 0, 0, 0, 1.5948629, 0, 0, 0, 1.5948629, 0, 0, 0)
+mesh = ExtResource("1_4r6ur")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=379085349]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.23803711, 0)
+shape = SubResource("CapsuleShape3D_wev8k")
