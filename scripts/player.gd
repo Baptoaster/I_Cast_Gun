@@ -4,6 +4,8 @@ signal coin_collected
 
 @export_subgroup("Components")
 @export var view: Node3D
+@export var camera: Camera3D
+@export var weapon: Node3D
 
 @export_subgroup("Properties")
 @export var movement_speed = 250
@@ -19,6 +21,9 @@ var jump_single = true
 var jump_double = true
 
 var coins = 0
+
+var is_aiming := false
+var aim_distance := 200.0
 
 @onready var particles_trail = $ParticlesTrail
 @onready var sound_footsteps = $SoundFootsteps
@@ -72,6 +77,9 @@ func _physics_process(delta):
 		Audio.play("res://sounds/land.ogg")
 
 	previously_floored = is_on_floor()
+	
+	handle_aim()
+	update_weapon_aim()
 
 # Handle animation(s)
 
@@ -164,3 +172,32 @@ func collect_coin():
 	coins += 1
 
 	coin_collected.emit(coins)
+	
+func handle_aim():
+	is_aiming = Input.is_action_pressed("aim")
+
+	if is_aiming and Input.is_action_just_pressed("fire"):
+		var target_point = get_aim_point()
+		weapon.fire(target_point)
+
+func update_weapon_aim():
+	if is_aiming:
+		var target_point = get_aim_point()
+		weapon.aim_at(target_point)
+
+func get_aim_point() -> Vector3:
+	var viewport := get_viewport()
+	var mouse_pos := viewport.get_mouse_position()
+	var ray_origin := camera.project_ray_origin(mouse_pos)
+	var ray_dir := camera.project_ray_normal(mouse_pos)
+	var ray_end := ray_origin + ray_dir * aim_distance
+
+	var space_state = get_world_3d().direct_space_state
+	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	query.exclude = [self]
+	var result = space_state.intersect_ray(query)
+
+	if result:
+		return result.position
+
+	return ray_end

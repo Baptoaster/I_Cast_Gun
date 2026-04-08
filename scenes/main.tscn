@@ -28,17 +28,16 @@ script = ExtResource("1_jkv2x")
 [node name="Environment" type="WorldEnvironment" parent="." unique_id=612712278]
 environment = ExtResource("1_ahusb")
 
-[node name="Player" parent="." unique_id=1570595188 node_paths=PackedStringArray("view") groups=["player"] instance=ExtResource("2_onms2")]
+[node name="Player" parent="." unique_id=1570595188 node_paths=PackedStringArray("view", "camera") groups=["player"] instance=ExtResource("2_onms2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.49277484, 0)
 view = NodePath("../View")
+camera = NodePath("../View/Camera")
 
 [node name="View" type="Node3D" parent="." unique_id=271189045 node_paths=PackedStringArray("target")]
 transform = Transform3D(0.707107, -0.298836, 0.640856, 0, 0.906308, 0.422618, -0.707107, -0.298836, 0.640856, 0, 0, 0)
 script = ExtResource("5_bg0fr")
 target = NodePath("../Player")
-tps_distance = 10.0
-tps_height = 5.0
-tps_lerp_speed = 20.0
+aim_shoulder_y = 0.8
 
 [node name="Camera" type="Camera3D" parent="View" unique_id=316491439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
