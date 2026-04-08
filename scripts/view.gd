@@ -1,5 +1,7 @@
 extends Node3D
 
+enum CameraMode { ORBIT, AIM }
+
 @export_group("Properties")
 @export var target: Node
 
@@ -12,50 +14,71 @@ extends Node3D
 @export var rotation_speed = 120
 @export var mouse_sensitivity = 0.1
 
-var camera_rotation:Vector3
+@export_group("Aim")
+@export var aim_shoulder_x = 0.6
+@export var aim_shoulder_y = 0.2
+@export var aim_distance = 3.0
+
+var camera_rotation: Vector3
 var zoom = 10
+var current_mode = CameraMode.ORBIT
+var is_aiming: bool = false
 
 @onready var camera = $Camera
 
 func _ready():
-	
+
 	camera_rotation = rotation_degrees # Initial rotation
-	
+
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	pass
 
 func _physics_process(delta):
-	
+
 	# Set position and rotation to targets
-	
+
 	self.position = self.position.lerp(target.position, delta * 4)
 	rotation_degrees = rotation_degrees.lerp(camera_rotation, delta * 6)
-	
-	camera.position = camera.position.lerp(Vector3(0, 0, zoom), 8 * delta)
-	
+
+	# Lerp camera toward the target offset for the current mode
+	var target_offset: Vector3
+	if current_mode == CameraMode.AIM:
+		target_offset = Vector3(aim_shoulder_x, aim_shoulder_y, aim_distance)
+	else:
+		target_offset = Vector3(0, 0, zoom)
+
+	camera.position = camera.position.lerp(target_offset, 8 * delta)
+
 	handle_input(delta)
 
 # Handle input
 
 func handle_input(delta):
-	
+
+	# Switch camera mode on aim input
+	is_aiming = Input.is_action_pressed("aim")
+	current_mode = CameraMode.AIM if is_aiming else CameraMode.ORBIT
+
 	# Rotation
-	
+
 	var input := Vector3.ZERO
-	
+
 	input.y = Input.get_axis("camera_left", "camera_right")
 	input.x = Input.get_axis("camera_up", "camera_down")
-	
+
 	camera_rotation += input.limit_length(1.0) * rotation_speed * delta
-		
-		# Mouvement de souris en mode orbite
+
+	# Mouse orbit
 	var mouse_motion = Input.get_last_mouse_velocity()
 	camera_rotation.y -= mouse_motion.x * mouse_sensitivity * delta
 	camera_rotation.x -= mouse_motion.y * mouse_sensitivity * delta
-		
-		# Clamp rotation
-	camera_rotation.x = clamp(camera_rotation.x, -80, -10)
-		
-		# Zooming (seulement en mode orbite)
-	zoom += Input.get_axis("zoom_in", "zoom_out") * zoom_speed * delta
-	zoom = clamp(zoom, zoom_maximum, zoom_minimum)
+
+	# Clamp pitch — tighter when aiming
+	if is_aiming:
+		camera_rotation.x = clamp(camera_rotation.x, -60, -5)
+	else:
+		camera_rotation.x = clamp(camera_rotation.x, -80, -10)
+
+	# Zooming (orbit mode only)
+	if not is_aiming:
+		zoom += Input.get_axis("zoom_in", "zoom_out") * zoom_speed * delta
+		zoom = clamp(zoom, zoom_maximum, zoom_minimum)

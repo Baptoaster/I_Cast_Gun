@@ -48,7 +48,10 @@ func _physics_process(delta):
 
 	# Rotation
 
-	if Vector2(velocity.z, velocity.x).length() > 0:
+	if view.is_aiming:
+		# Face opposite to the camera yaw so the player looks where the camera points
+		rotation_direction = view.rotation.y + PI
+	elif Vector2(velocity.z, velocity.x).length() > 0:
 		rotation_direction = Vector2(velocity.z, velocity.x).angle()
 
 	rotation.y = lerp_angle(rotation.y, rotation_direction, delta * 10)
